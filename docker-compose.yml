@@ -1,0 +1,47 @@
+version: '3.6'
+
+x-networks: &compose_networks
+  networks:
+    - consul
+
+services:
+  consul:
+    image: consul:1.4.0
+    command: agent -server -bootstrap -ui -client 0.0.0.0
+    volumes:
+      - consul_data:/consul/data
+    ports:
+      - 8300:8300
+      - 8301:8301
+      - 8500:8500
+      - 8600:8600
+    << : *compose_networks
+
+  registrator:
+    image: gliderlabs/registrator:latest
+    command: consul://consul:8500
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+    links:
+      - consul
+    << : *compose_networks
+
+  nginx:
+    image: nginx:1.15.5-alpine
+    working_dir: /var/www
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./.htpasswd:/etc/nginx/.htpasswd
+    ports:
+      - 9090:80
+    << : *compose_networks
+
+networks:
+  consul:
+    name: consul
+    driver: bridge
+
+volumes:
+  consul_data:
+    name: consul_data
+    external: true
